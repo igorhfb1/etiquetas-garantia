@@ -108,6 +108,11 @@
       align-items: center;
     }
 
+    #descricao.loading {
+      font-style: italic;
+      color: #999;
+    }
+
     @media print {
       * {
         -webkit-print-color-adjust: exact !important;
@@ -151,8 +156,10 @@
 
   <form id="formulario">
     <label for="codigo">Código do Produto:</label>
-    <input type="text" id="codigo" required>
+    <input type="text" id="codigo" required pattern="\d*" inputmode="numeric">
+    <button type="button" id="btnBuscar" class="enabled" style="margin-top: 8px; margin-bottom: 12px;">Buscar Descrição</button>
     <span id="erroDuplicado" style="color: red; font-size: 0.9em; display: none;">Este produto já está na fila. Remova-o para poder adicioná-lo novamente.</span>
+    <span id="mensagemErro" style="color: red; font-size: 0.9em; display: none;"></span>
 
     <label for="descricao">Descrição:</label>
     <input type="text" id="descricao" readonly>
@@ -175,120 +182,54 @@
 
     const btnIncluir = document.getElementById('btnIncluir');
     const btnImprimir = document.getElementById('btnImprimir');
+    const btnBuscar = document.getElementById('btnBuscar');
+    const codigoInput = document.getElementById('codigo');
+    const descricaoInput = document.getElementById('descricao');
+    const erroMsg = document.getElementById('mensagemErro');
 
-    function validarFormulario() {
-      const codigoInput = document.getElementById('codigo');
-      const descricaoInput = document.getElementById('descricao');
-      const quantidadeInput = document.getElementById('quantidade');
-      const causaInput = document.getElementById('causa');
+    document.getElementById('codigo').addEventListener('input', e => {
+      e.target.value = e.target.value.replace(/\D/g, '');
+    });
 
+    btnBuscar.addEventListener('click', () => {
       const codigo = codigoInput.value.trim();
-      const descricao = descricaoInput.value.trim();
-      const quantidade = quantidadeInput.value.trim();
-      const causa = causaInput.value.trim();
-
-      const valido = codigo && quantidade && causa &&
-        descricao !== '' &&
-        descricao !== 'Produto não encontrado' &&
-        descricao !== 'Erro ao buscar descrição';
-
-      const codigoDuplicado = produtos.some(p => p.codigo === codigo);
-
-      codigoInput.classList.toggle('erro', codigoDuplicado);
-      const erroDuplicadoMsg = document.getElementById('erroDuplicado');
-      erroDuplicadoMsg.style.display = codigoDuplicado ? 'block' : 'none';
-
-      btnIncluir.disabled = !(valido && !codigoDuplicado);
-      btnIncluir.classList.toggle('enabled', valido && !codigoDuplicado);
-
-      btnImprimir.disabled = produtos.length === 0;
-      btnImprimir.classList.toggle('enabled', produtos.length > 0);
-    }
-
-    document.querySelectorAll('#codigo, #quantidade, #causa').forEach(input => {
-      input.addEventListener('input', validarFormulario);
-    });
-
-    let debounceTimer;
-    document.getElementById('codigo').addEventListener('blur', function () {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(buscarDescricao, 300);
-    });
-
-    async function buscarDescricao() {
-      const codigo = document.getElementById('codigo').value.trim();
       if (!codigo) return;
 
-      try {
-        const response = await fetch(`${planilhaURL}?codigo=${encodeURIComponent(codigo)}`);
-        const text = await response.text();
-        const data = JSON.parse(text);
-        document.getElementById('descricao').value = data.descricao || 'Produto não encontrado';
-      } catch (error) {
-        console.error('Erro ao buscar descrição:', error);
-        document.getElementById('descricao').value = 'Erro ao buscar descrição';
-      }
-      validarFormulario();
-    }
+      descricaoInput.value = 'Carregando';
+      descricaoInput.classList.add('loading');
+      erroMsg.style.display = 'none';
+      btnBuscar.disabled = true;
 
-    function incluirProduto() {
-      const codigo = document.getElementById('codigo').value.trim();
-      const descricao = document.getElementById('descricao').value.trim();
-      const quantidade = document.getElementById('quantidade').value.trim();
-      const causa = document.getElementById('causa').value.trim();
-      const dataHora = new Date().toLocaleString();
+      let pontos = 1;
+      const animacao = setInterval(() => {
+        descricaoInput.value = 'Carregando' + '.'.repeat(pontos);
+        pontos = (pontos % 3) + 1;
+      }, 500);
 
-      if (!codigo || !quantidade || !causa || descricao === 'Produto não encontrado' || descricao === 'Erro ao buscar descrição') {
-        alert('Preencha todos os campos corretamente para incluir a etiqueta.');
-        return;
-      }
+      fetch(`${planilhaURL}?codigo=${codigo}`)
+        .then(res => res.json())
+        .then(data => {
+          clearInterval(animacao);
+          descricaoInput.classList.remove('loading');
+          btnBuscar.disabled = false;
 
-      if (produtos.some(p => p.codigo === codigo)) {
-        alert('Este produto já foi incluído. Remova-o da lista antes de incluir novamente.');
-        return;
-      }
-
-      produtos.push({ codigo, descricao, quantidade, causa, dataHora });
-      renderizarEtiquetas();
-      document.getElementById('formulario').reset();
-      document.getElementById('descricao').value = '';
-      validarFormulario();
-    }
-
-    function excluirProduto(index) {
-      produtos.splice(index, 1);
-      renderizarEtiquetas();
-      validarFormulario();
-    }
-
-    function renderizarEtiquetas() {
-      const container = document.getElementById('listaEtiquetas');
-      container.innerHTML = '';
-      produtos.forEach((item, index) => {
-        container.innerHTML += `
-          <div class="etiqueta">
-            <img src="img/logo-rezende.png" alt="Logo Rezende" class="logo">
-            <strong>Data/Hora:</strong> ${item.dataHora}<br>
-            <strong>Código:</strong> ${item.codigo}<br>
-            <strong>Descrição:</strong> ${item.descricao}<br>
-            <strong>Quantidade:</strong> ${item.quantidade}<br>
-            <strong>Causa:</strong> ${item.causa}<br>
-            <button onclick="excluirProduto(${index})">Excluir</button>
-          </div>
-        `;
-      });
-    }
-
-    function imprimirEtiquetas() {
-      if (produtos.length === 0) {
-        alert('Nenhuma etiqueta foi adicionada. Adicione pelo menos um produto para imprimir.');
-        return;
-      }
-      window.print();
-      produtos.length = 0;
-      renderizarEtiquetas();
-      validarFormulario();
-    }
+          if (data && data.descricao) {
+            descricaoInput.value = data.descricao;
+          } else {
+            descricaoInput.value = '';
+            erroMsg.textContent = 'Produto não encontrado.';
+            erroMsg.style.display = 'block';
+          }
+        })
+        .catch(() => {
+          clearInterval(animacao);
+          descricaoInput.value = '';
+          descricaoInput.classList.remove('loading');
+          btnBuscar.disabled = false;
+          erroMsg.textContent = 'Erro ao buscar a descrição.';
+          erroMsg.style.display = 'block';
+        });
+    });
   </script>
 </body>
 </html>
