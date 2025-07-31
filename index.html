@@ -4,31 +4,118 @@
   <meta charset="UTF-8">
   <title>Etiquetas de Garantia</title>
   <style>
+    :root {
+      --azul: #141b4d;
+      --laranja: #ff7a15;
+    }
+
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
+      margin: 0;
+      background-color: var(--azul);
+      color: var(--azul);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 40px 20px;
     }
-    label, input, textarea, button {
-      display: block;
-      margin: 10px 0;
+
+    h1 {
+      color: white;
+      margin-bottom: 20px;
     }
-    table {
+
+    form {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 600px;
       width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
     }
-    th, td {
-      border: 1px solid #ccc;
+
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    input, textarea {
+      width: 100%;
       padding: 8px;
-      text-align: left;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-top: 4px;
     }
+
+    button {
+      background-color: var(--laranja);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin-right: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #e46b0e;
+    }
+
     .etiqueta {
-      border: 1px dashed #000;
+      background: white;
+      border: 1px solid #ccc;
       padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      color: black;
+      max-width: 600px;
+    }
+
+    .etiqueta .logo {
+      width: 100px;
       margin-bottom: 10px;
     }
+
+    .etiqueta button {
+      background-color: transparent;
+      color: var(--laranja);
+      border: 1px solid var(--laranja);
+      margin-top: 10px;
+    }
+
+    .etiqueta button:hover {
+      background-color: var(--laranja);
+      color: white;
+    }
+
+    #listaEtiquetas {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
     @media print {
       button, form { display: none; }
+      body {
+        background: white;
+        color: black;
+        padding: 0;
+      }
+      .etiqueta {
+        page-break-inside: avoid;
+        border: 1px solid #000;
+        padding: 12px;
+        margin-bottom: 15px;
+      }
+      .etiqueta button {
+        display: none;
+      }
+      .etiqueta .logo {
+        display: block;
+      }
     }
   </style>
 </head>
@@ -94,6 +181,7 @@
       produtos.forEach((item, index) => {
         container.innerHTML += `
           <div class="etiqueta">
+            <img src="Logo Rezende Branca.png" alt="Logo Rezende" class="logo">
             <strong>Data/Hora:</strong> ${item.dataHora}<br>
             <strong>Código:</strong> ${item.codigo}<br>
             <strong>Descrição:</strong> ${item.descricao}<br>
