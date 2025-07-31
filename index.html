@@ -121,7 +121,10 @@
 </head>
 <body>
 
+  <div style="text-align: center;">
+  <img src="img/logo-rezende-branca.png" alt="Logo Rezende" style="width: 150px; margin-bottom: 10px;">
   <h1>Etiquetas de Garantia</h1>
+</div>
 
   <form id="formulario">
     <label for="codigo">Código do Produto:</label>
@@ -145,23 +148,37 @@
   <script>
     const produtos = [];
 
-    const planilhaURL = 'https://script.google.com/macros/s/1xJQ_C52GGWuCpnNCDmwJFdLhO4vCQeuBxKRnkiJH-mw/exec';
+    const planilhaURL = 'https://script.google.com/macros/s/AKfycbzXGrW-2nz41i-rIRKyvvisfgN425DR9UvNX5engAQ7xGt9WNOHZkrENCJ-O9tdrBykFA/exec';
 
-    document.getElementById('codigo').addEventListener('blur', async function() {
-      const codigo = this.value;
-      const response = await fetch(`${planilhaURL}?codigo=${codigo}`);
-      const data = await response.json();
-      document.getElementById('descricao').value = data.descricao || 'Produto não encontrado';
+    document.getElementById('codigo').addEventListener('blur', async function () {
+      const codigo = this.value.trim();
+      if (!codigo) return;
+
+      try {
+        const response = await fetch(`${planilhaURL}?codigo=${encodeURIComponent(codigo)}`);
+
+        const text = await response.text();
+        try {
+          const data = JSON.parse(text);
+          document.getElementById('descricao').value = data.descricao || 'Produto não encontrado';
+        } catch (jsonError) {
+          console.warn('Resposta não é JSON válido:', text);
+          document.getElementById('descricao').value = 'Produto não encontrado';
+        }
+      } catch (error) {
+        console.error('Erro ao buscar descrição:', error);
+        document.getElementById('descricao').value = 'Erro ao buscar descrição';
+      }
     });
 
     function incluirProduto() {
-      const codigo = document.getElementById('codigo').value;
-      const descricao = document.getElementById('descricao').value;
-      const quantidade = document.getElementById('quantidade').value;
-      const causa = document.getElementById('causa').value;
+      const codigo = document.getElementById('codigo').value.trim();
+      const descricao = document.getElementById('descricao').value.trim();
+      const quantidade = document.getElementById('quantidade').value.trim();
+      const causa = document.getElementById('causa').value.trim();
       const dataHora = new Date().toLocaleString();
 
-      if (!codigo || !quantidade || !causa || descricao === 'Produto não encontrado') return;
+      if (!codigo || !quantidade || !causa || descricao === 'Produto não encontrado' || descricao === 'Erro ao buscar descrição') return;
 
       produtos.push({ codigo, descricao, quantidade, causa, dataHora });
       renderizarEtiquetas();
@@ -181,7 +198,7 @@
       produtos.forEach((item, index) => {
         container.innerHTML += `
           <div class="etiqueta">
-            <img src="Logo Rezende Branca.png" alt="Logo Rezende" class="logo">
+            <img src="img/logo-rezende.png" alt="Logo Rezende" class="logo">
             <strong>Data/Hora:</strong> ${item.dataHora}<br>
             <strong>Código:</strong> ${item.codigo}<br>
             <strong>Descrição:</strong> ${item.descricao}<br>
