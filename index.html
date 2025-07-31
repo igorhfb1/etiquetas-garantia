@@ -7,6 +7,7 @@
     :root {
       --azul: #141b4d;
       --laranja: #ff7a15;
+      --cinza: #cccccc;
     }
 
     body {
@@ -48,18 +49,28 @@
       margin-top: 4px;
     }
 
+    input.erro {
+      border-color: red;
+      background-color: #ffe6e6;
+    }
+
     button {
-      background-color: var(--laranja);
+      background-color: var(--cinza);
       color: white;
       border: none;
       padding: 10px 20px;
       margin-right: 10px;
       border-radius: 4px;
-      cursor: pointer;
+      cursor: not-allowed;
       font-weight: bold;
     }
 
-    button:hover {
+    button.enabled {
+      background-color: var(--laranja);
+      cursor: pointer;
+    }
+
+    button.enabled:hover {
       background-color: #e46b0e;
     }
 
@@ -98,6 +109,19 @@
     }
 
     @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      body > *:not(#listaEtiquetas) {
+        display: none !important;
+      }
+      #listaEtiquetas {
+        display: block;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
       button, form { display: none; }
       body {
         background: white;
@@ -120,15 +144,15 @@
   </style>
 </head>
 <body>
-
   <div style="text-align: center;">
-  <img src="img/logo-rezende-branca.png" alt="Logo Rezende" style="width: 150px; margin-bottom: 10px;">
-  <h1>Etiquetas de Garantia</h1>
-</div>
+    <img src="img/logo-rezende-branca.png" alt="Logo Rezende" style="width: 150px; margin-bottom: 10px;">
+    <h1>Etiquetas de Garantia</h1>
+  </div>
 
   <form id="formulario">
     <label for="codigo">Código do Produto:</label>
     <input type="text" id="codigo" required>
+    <span id="erroDuplicado" style="color: red; font-size: 0.9em; display: none;">Este produto já está na fila. Remova-o para poder adicioná-lo novamente.</span>
 
     <label for="descricao">Descrição:</label>
     <input type="text" id="descricao" readonly>
@@ -139,37 +163,73 @@
     <label for="causa">Causa da Garantia:</label>
     <textarea id="causa" required></textarea>
 
-    <button type="button" onclick="incluirProduto()">Incluir Produto</button>
-    <button type="button" onclick="imprimirEtiquetas()">Imprimir</button>
+    <button id="btnIncluir" type="button" onclick="incluirProduto()">Incluir Produto</button>
+    <button id="btnImprimir" type="button" onclick="imprimirEtiquetas()" disabled>Imprimir</button>
   </form>
 
   <div id="listaEtiquetas"></div>
 
   <script>
     const produtos = [];
-
     const planilhaURL = 'https://script.google.com/macros/s/AKfycbzXGrW-2nz41i-rIRKyvvisfgN425DR9UvNX5engAQ7xGt9WNOHZkrENCJ-O9tdrBykFA/exec';
 
-    document.getElementById('codigo').addEventListener('blur', async function () {
-      const codigo = this.value.trim();
+    const btnIncluir = document.getElementById('btnIncluir');
+    const btnImprimir = document.getElementById('btnImprimir');
+
+    function validarFormulario() {
+      const codigoInput = document.getElementById('codigo');
+      const descricaoInput = document.getElementById('descricao');
+      const quantidadeInput = document.getElementById('quantidade');
+      const causaInput = document.getElementById('causa');
+
+      const codigo = codigoInput.value.trim();
+      const descricao = descricaoInput.value.trim();
+      const quantidade = quantidadeInput.value.trim();
+      const causa = causaInput.value.trim();
+
+      const valido = codigo && quantidade && causa &&
+        descricao !== '' &&
+        descricao !== 'Produto não encontrado' &&
+        descricao !== 'Erro ao buscar descrição';
+
+      const codigoDuplicado = produtos.some(p => p.codigo === codigo);
+
+      codigoInput.classList.toggle('erro', codigoDuplicado);
+      const erroDuplicadoMsg = document.getElementById('erroDuplicado');
+      erroDuplicadoMsg.style.display = codigoDuplicado ? 'block' : 'none';
+
+      btnIncluir.disabled = !(valido && !codigoDuplicado);
+      btnIncluir.classList.toggle('enabled', valido && !codigoDuplicado);
+
+      btnImprimir.disabled = produtos.length === 0;
+      btnImprimir.classList.toggle('enabled', produtos.length > 0);
+    }
+
+    document.querySelectorAll('#codigo, #quantidade, #causa').forEach(input => {
+      input.addEventListener('input', validarFormulario);
+    });
+
+    let debounceTimer;
+    document.getElementById('codigo').addEventListener('blur', function () {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(buscarDescricao, 300);
+    });
+
+    async function buscarDescricao() {
+      const codigo = document.getElementById('codigo').value.trim();
       if (!codigo) return;
 
       try {
         const response = await fetch(`${planilhaURL}?codigo=${encodeURIComponent(codigo)}`);
-
         const text = await response.text();
-        try {
-          const data = JSON.parse(text);
-          document.getElementById('descricao').value = data.descricao || 'Produto não encontrado';
-        } catch (jsonError) {
-          console.warn('Resposta não é JSON válido:', text);
-          document.getElementById('descricao').value = 'Produto não encontrado';
-        }
+        const data = JSON.parse(text);
+        document.getElementById('descricao').value = data.descricao || 'Produto não encontrado';
       } catch (error) {
         console.error('Erro ao buscar descrição:', error);
         document.getElementById('descricao').value = 'Erro ao buscar descrição';
       }
-    });
+      validarFormulario();
+    }
 
     function incluirProduto() {
       const codigo = document.getElementById('codigo').value.trim();
@@ -178,18 +238,27 @@
       const causa = document.getElementById('causa').value.trim();
       const dataHora = new Date().toLocaleString();
 
-      if (!codigo || !quantidade || !causa || descricao === 'Produto não encontrado' || descricao === 'Erro ao buscar descrição') return;
+      if (!codigo || !quantidade || !causa || descricao === 'Produto não encontrado' || descricao === 'Erro ao buscar descrição') {
+        alert('Preencha todos os campos corretamente para incluir a etiqueta.');
+        return;
+      }
+
+      if (produtos.some(p => p.codigo === codigo)) {
+        alert('Este produto já foi incluído. Remova-o da lista antes de incluir novamente.');
+        return;
+      }
 
       produtos.push({ codigo, descricao, quantidade, causa, dataHora });
       renderizarEtiquetas();
-
       document.getElementById('formulario').reset();
       document.getElementById('descricao').value = '';
+      validarFormulario();
     }
 
     function excluirProduto(index) {
       produtos.splice(index, 1);
       renderizarEtiquetas();
+      validarFormulario();
     }
 
     function renderizarEtiquetas() {
@@ -211,12 +280,15 @@
     }
 
     function imprimirEtiquetas() {
-      if (produtos.length === 0) return;
+      if (produtos.length === 0) {
+        alert('Nenhuma etiqueta foi adicionada. Adicione pelo menos um produto para imprimir.');
+        return;
+      }
       window.print();
       produtos.length = 0;
       renderizarEtiquetas();
+      validarFormulario();
     }
   </script>
-
 </body>
 </html>
