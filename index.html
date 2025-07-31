@@ -66,7 +66,7 @@
     }
 
     button.enabled {
-      background-color: var(--laranja);
+      background-color: var(--laranja) !important;
       cursor: pointer;
     }
 
@@ -170,7 +170,7 @@
     <label for="causa">Causa da Garantia:</label>
     <textarea id="causa" required></textarea>
 
-    <button id="btnIncluir" type="button" onclick="incluirProduto()">Incluir Produto</button>
+    <button id="btnIncluir" type="button" disabled>Incluir Produto</button>
     <button id="btnImprimir" type="button" onclick="imprimirEtiquetas()" disabled>Imprimir</button>
   </form>
 
@@ -185,9 +185,29 @@
     const btnBuscar = document.getElementById('btnBuscar');
     const codigoInput = document.getElementById('codigo');
     const descricaoInput = document.getElementById('descricao');
+    const quantidadeInput = document.getElementById('quantidade');
+    const causaInput = document.getElementById('causa');
     const erroMsg = document.getElementById('mensagemErro');
+    const erroDuplicado = document.getElementById('erroDuplicado');
 
-    document.getElementById('codigo').addEventListener('input', e => {
+    let descricaoValida = false;
+
+    function validarFormulario() {
+      const codigo = codigoInput.value.trim();
+      const descricao = descricaoInput.value.trim();
+      const quantidade = quantidadeInput.value.trim();
+      const causa = causaInput.value.trim();
+
+      const valido = codigo && descricao && descricaoValida && quantidade && causa;
+      btnIncluir.disabled = !valido;
+      btnIncluir.classList.toggle('enabled', valido);
+    }
+
+    document.querySelectorAll('#codigo, #descricao, #quantidade, #causa').forEach(input => {
+      input.addEventListener('input', validarFormulario);
+    });
+
+    codigoInput.addEventListener('input', e => {
       e.target.value = e.target.value.replace(/\D/g, '');
     });
 
@@ -198,7 +218,10 @@
       descricaoInput.value = 'Carregando';
       descricaoInput.classList.add('loading');
       erroMsg.style.display = 'none';
+      erroDuplicado.style.display = 'none';
       btnBuscar.disabled = true;
+      descricaoValida = false;
+      validarFormulario();
 
       let pontos = 1;
       const animacao = setInterval(() => {
@@ -215,11 +238,15 @@
 
           if (data && data.descricao) {
             descricaoInput.value = data.descricao;
+            descricaoValida = true;
+            quantidadeInput.focus();
           } else {
             descricaoInput.value = '';
             erroMsg.textContent = 'Produto não encontrado.';
             erroMsg.style.display = 'block';
           }
+
+          validarFormulario();
         })
         .catch(() => {
           clearInterval(animacao);
@@ -228,8 +255,56 @@
           btnBuscar.disabled = false;
           erroMsg.textContent = 'Erro ao buscar a descrição.';
           erroMsg.style.display = 'block';
+          validarFormulario();
         });
     });
+
+    btnIncluir.addEventListener('click', () => {
+      const codigo = codigoInput.value.trim();
+      const descricao = descricaoInput.value.trim();
+      const quantidade = quantidadeInput.value.trim();
+      const causa = causaInput.value.trim();
+
+      if (produtos.some(p => p.codigo === codigo)) {
+        erroDuplicado.style.display = 'block';
+        return;
+      }
+
+      produtos.push({ codigo, descricao, quantidade, causa, dataHora: new Date().toLocaleString() });
+
+      const etiqueta = document.createElement('div');
+      etiqueta.classList.add('etiqueta');
+      etiqueta.innerHTML = `
+        <img src="img/logo-rezende.png" class="logo">
+        <p><strong>Código:</strong> ${codigo}</p>
+        <p><strong>Descrição:</strong> ${descricao}</p>
+        <p><strong>Quantidade:</strong> ${quantidade}</p>
+        <p><strong>Causa:</strong> ${causa}</p>
+        <p><strong>Data/Hora:</strong> ${new Date().toLocaleString()}</p>
+        <button onclick="this.parentNode.remove(); produtos.splice(produtos.findIndex(p => p.codigo === '${codigo}'), 1); btnImprimir.disabled = produtos.length === 0;">Remover</button>
+      `;
+
+      document.getElementById('listaEtiquetas').appendChild(etiqueta);
+
+      btnImprimir.disabled = produtos.length === 0;
+      btnImprimir.classList.toggle('enabled', produtos.length > 0);
+
+      codigoInput.value = '';
+      descricaoInput.value = '';
+      quantidadeInput.value = '';
+      causaInput.value = '';
+      descricaoValida = false;
+      erroDuplicado.style.display = 'none';
+      erroMsg.style.display = 'none';
+      btnIncluir.disabled = true;
+      btnIncluir.classList.remove('enabled');
+      codigoInput.focus();
+    });
+
+    function imprimirEtiquetas() {
+      window.onafterprint = () => location.reload();
+      window.print();
+    }
   </script>
 </body>
 </html>
