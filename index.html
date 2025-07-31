@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Etiquetas de Garantia</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    label, input, textarea, button {
+      display: block;
+      margin: 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    .etiqueta {
+      border: 1px dashed #000;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    @media print {
+      button, form { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Etiquetas de Garantia</h1>
+
+  <form id="formulario">
+    <label for="codigo">Código do Produto:</label>
+    <input type="text" id="codigo" required>
+
+    <label for="descricao">Descrição:</label>
+    <input type="text" id="descricao" readonly>
+
+    <label for="quantidade">Quantidade:</label>
+    <input type="number" id="quantidade" min="1" required>
+
+    <label for="causa">Causa da Garantia:</label>
+    <textarea id="causa" required></textarea>
+
+    <button type="button" onclick="incluirProduto()">Incluir Produto</button>
+    <button type="button" onclick="imprimirEtiquetas()">Imprimir</button>
+  </form>
+
+  <div id="listaEtiquetas"></div>
+
+  <script>
+    const produtos = [];
+
+    const planilhaURL = 'https://script.google.com/macros/s/SEU_SCRIPT_ID/exec';
+
+    document.getElementById('codigo').addEventListener('blur', async function() {
+      const codigo = this.value;
+      const response = await fetch(`${planilhaURL}?codigo=${codigo}`);
+      const data = await response.json();
+      document.getElementById('descricao').value = data.descricao || 'Produto não encontrado';
+    });
+
+    function incluirProduto() {
+      const codigo = document.getElementById('codigo').value;
+      const descricao = document.getElementById('descricao').value;
+      const quantidade = document.getElementById('quantidade').value;
+      const causa = document.getElementById('causa').value;
+      const dataHora = new Date().toLocaleString();
+
+      if (!codigo || !quantidade || !causa || descricao === 'Produto não encontrado') return;
+
+      produtos.push({ codigo, descricao, quantidade, causa, dataHora });
+      renderizarEtiquetas();
+
+      document.getElementById('formulario').reset();
+      document.getElementById('descricao').value = '';
+    }
+
+    function excluirProduto(index) {
+      produtos.splice(index, 1);
+      renderizarEtiquetas();
+    }
+
+    function renderizarEtiquetas() {
+      const container = document.getElementById('listaEtiquetas');
+      container.innerHTML = '';
+      produtos.forEach((item, index) => {
+        container.innerHTML += `
+          <div class="etiqueta">
+            <strong>Data/Hora:</strong> ${item.dataHora}<br>
+            <strong>Código:</strong> ${item.codigo}<br>
+            <strong>Descrição:</strong> ${item.descricao}<br>
+            <strong>Quantidade:</strong> ${item.quantidade}<br>
+            <strong>Causa:</strong> ${item.causa}<br>
+            <button onclick="excluirProduto(${index})">Excluir</button>
+          </div>
+        `;
+      });
+    }
+
+    function imprimirEtiquetas() {
+      if (produtos.length === 0) return;
+      window.print();
+      produtos.length = 0;
+      renderizarEtiquetas();
+    }
+  </script>
+
+</body>
+</html>
