@@ -184,7 +184,7 @@
     const btnImprimir = document.getElementById('btnImprimir');
     const btnBuscar = document.getElementById('btnBuscar');
     const codigoInput = document.getElementById('codigo');
-    const descricaoInput = document.getElementById('descricaoCadastro');
+    const descricaoInput = document.getElementById('descricaoCadastro'); // corrigido
     const quantidadeInput = document.getElementById('quantidade');
     const causaInput = document.getElementById('causa');
     const erroMsg = document.getElementById('mensagemErro');
@@ -229,7 +229,7 @@
         pontos = (pontos % 3) + 1;
       }, 500);
 
-      fetch(`${planilhaURL}?codigo=${codigo}`)
+      fetch(${apiURL}?codigo=${codigo})
         .then(res => res.json())
         .then(data => {
           clearInterval(animacao);
@@ -281,7 +281,7 @@
         <p><strong>Quantidade:</strong> ${quantidade}</p>
         <p><strong>Causa:</strong> ${causa}</p>
         <p><strong>Data/Hora:</strong> ${new Date().toLocaleString()}</p>
-        <button onclick="this.parentNode.remove(); produtos.splice(produtos.findIndex(p => p.codigo === '${codigo}'), 1); btnImprimir.disabled = produtos.length === 0;">Remover</button>
+        <button onclick="this.parentNode.remove(); produtos.splice(produtos.findIndex(p => p.codigo === '${codigo}'), 1); btnImprimir.disabled = produtos.length === 0; btnImprimir.classList.toggle('enabled', produtos.length > 0);">Remover</button>
       `;
 
       document.getElementById('listaEtiquetas').appendChild(etiqueta);
